@@ -477,6 +477,56 @@ Instructions:
             public int TurnaroundTime { get; set; }
         }
 
+
+        // Displays performance metrics beneath the results table.
+        private void DisplayMetrics(List<SchedulingResult> results)
+        {
+            if (results == null || results.Count == 0) return;
+
+            double avgWaiting = results.Average(r => r.WaitingTime);
+            double avgTurnaround = results.Average(r => r.TurnaroundTime);
+
+            int firstArrival = results.Min(r => r.ArrivalTime);
+            int lastFinish = results.Max(r => r.FinishTime);
+            int elapsed = Math.Max(1, lastFinish - firstArrival);
+            double totalBurst = results.Sum(r => r.BurstTime);
+
+            double cpuUtilization = (totalBurst / elapsed) * 100.0;
+            double throughput = results.Count / (double)elapsed;
+            double avgResponse = results.Average(r => r.StartTime - r.ArrivalTime);
+
+            // spacer
+            listView1.Items.Add(new ListViewItem(""));
+
+            // compact, column-aligned row (assumes you have at least 7 columns)
+            var metricsRow = new ListViewItem("METRICS");
+            metricsRow.SubItems.Add(""); // Arrival col
+            metricsRow.SubItems.Add(""); // Burst col
+            metricsRow.SubItems.Add($"CPU {cpuUtilization:F1}%");
+            metricsRow.SubItems.Add($"Thru {throughput:F3}/t");
+            metricsRow.SubItems.Add($"AvgW {avgWaiting:F2}");
+            metricsRow.SubItems.Add($"AvgT {avgTurnaround:F2}");
+            listView1.Items.Add(metricsRow);
+
+            // optional second compact line if you want response time shown:
+            var rtRow = new ListViewItem("");
+            rtRow.SubItems.Add("");
+            rtRow.SubItems.Add("");
+            rtRow.SubItems.Add($"Resp {avgResponse:F2}");
+            listView1.Items.Add(rtRow);
+
+            // Resize columns so numbers are visible
+            AutoFitResultsColumns();
+        }
+
+        private void AutoFitResultsColumns()
+        {
+            // First fit to content, then headers, to get a reasonable width
+            listView1.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+            listView1.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
+        }
+
+
         /// <summary>
         /// STUDENTS: Displays scheduling results in a formatted table
         /// Use this method to show your algorithm results consistently
@@ -521,6 +571,41 @@ Instructions:
             summaryItem.SubItems.Add("");
             listView1.Items.Add(summaryItem);
 
+            //NEW
+            // --- PERFORMANCE METRICS ---
+            if (results == null || results.Count == 0) return;
+
+            // 1. Average Waiting / Turnaround
+            avgWaiting = results.Average(r => r.WaitingTime);
+            avgTurnaround = results.Average(r => r.TurnaroundTime);
+
+            // 2. CPU Utilization (%)
+            double totalBurst = results.Sum(r => r.BurstTime);
+            int firstArrival = results.Min(r => r.ArrivalTime);
+            int lastFinish = results.Max(r => r.FinishTime);
+            int elapsed = Math.Max(1, lastFinish - firstArrival);
+            double cpuUtilization = (totalBurst / (double)elapsed) * 100.0;
+
+            // 3. Throughput (processes per unit time)
+            double throughput = results.Count / (double)elapsed;
+
+            // 4. Response Time (optional)
+            double avgResponse = results.Average(r => r.StartTime - r.ArrivalTime);
+
+            // Display metrics
+            listView1.Items.Add(new ListViewItem(""));
+            var metricsHeader = new ListViewItem("=== PERFORMANCE METRICS ===");
+            metricsHeader.Font = new Font(metricsHeader.Font, FontStyle.Bold);
+            listView1.Items.Add(metricsHeader);
+
+            listView1.Items.Add(new ListViewItem($"Average Waiting Time: {avgWaiting:F2}"));
+            listView1.Items.Add(new ListViewItem($"Average Turnaround Time: {avgTurnaround:F2}"));
+            listView1.Items.Add(new ListViewItem($"CPU Utilization: {cpuUtilization:F1}%"));
+            listView1.Items.Add(new ListViewItem($"Throughput: {throughput:F3} processes/unit time"));
+            listView1.Items.Add(new ListViewItem($"Average Response Time: {avgResponse:F2}"));
+
+
+
             // TODO: STUDENTS - Add performance metrics calculation and display here
             // Required metrics for your project report:
             // 1. Average Waiting Time (AWT) - sum of all waiting times / number of processes
@@ -529,14 +614,17 @@ Instructions:
             // 4. Throughput (processes/second) - number of processes / total time
             // 5. Response Time (RT) [Optional] - time from arrival to first execution
             // Display these metrics in the results view for comparison between algorithms
-            
+
             // TODO: STUDENTS - Add CSV export functionality for results data
             // Create a "Export Results" button in the results panel to save:
             // - Individual process results (what's shown in listView1)
             // - Performance metrics summary for each algorithm tested
             // Reference the SaveData_Click() method above to learn CSV file handling
             // This will help you create tables/charts for your project report
+
         }
+
+
 
         /// <summary>
         /// Initializes the process data table structure.
@@ -858,7 +946,8 @@ Instructions:
 
                 // Update Results tab with detailed scheduling results
                 DisplaySchedulingResults(results, "FCFS - First Come First Serve");
-                
+                DisplayMetrics(results);
+
                 // Switch to Results panel and update sidebar
                 ShowPanel(resultsPanel);
                 sidePanel.Height = btnDashBoard.Height;
@@ -887,7 +976,8 @@ Instructions:
 
                 // Update Results tab with detailed scheduling results
                 DisplaySchedulingResults(results, "SJF - Shortest Job First");
-                
+                DisplayMetrics(results);
+
                 // Switch to Results panel and update sidebar
                 ShowPanel(resultsPanel);
                 sidePanel.Height = btnDashBoard.Height;
@@ -916,7 +1006,8 @@ Instructions:
 
                 // Update Results tab with detailed scheduling results
                 DisplaySchedulingResults(results, "Priority Scheduling (Higher # = Higher Priority)");
-                
+                DisplayMetrics(results);
+
                 // Switch to Results panel and update sidebar
                 ShowPanel(resultsPanel);
                 sidePanel.Height = btnDashBoard.Height;
@@ -1273,7 +1364,8 @@ Instructions:
 
                     // Update Results tab with detailed scheduling results
                     DisplaySchedulingResults(results, $"Round Robin (Quantum = {quantumTime})");
-                    
+                    DisplayMetrics(results);
+
                     // Switch to Results panel and update sidebar
                     ShowPanel(resultsPanel);
                     sidePanel.Height = btnDashBoard.Height;
@@ -1293,6 +1385,237 @@ Instructions:
             }
         }
 
+        // --- NEW ---
+        // Preemptive SJF: at each time unit, run the arrived process with the least remaining time.
+        private List<SchedulingResult> RunSRTFAlgorithm(List<ProcessData> processes)
+        {
+            // Clone to avoid mutating the grid's backing list
+            var procs = processes
+                .Select(p => new { p.ProcessID, p.ArrivalTime, p.BurstTime })
+                .OrderBy(p => p.ArrivalTime)
+                .ToList();
+
+            var remaining = procs.ToDictionary(p => p.ProcessID, p => p.BurstTime);
+            var firstStart = procs.ToDictionary(p => p.ProcessID, p => -1); // response time if you want it later
+            var finish = procs.ToDictionary(p => p.ProcessID, p => 0);
+
+            int time = procs.Min(p => p.ArrivalTime);
+            int totalBurst = procs.Sum(p => p.BurstTime);
+            int done = 0;
+
+            // For throughput/utilization later we only need final Start/Finish, Waiting, Turnaround.
+            while (done < procs.Count)
+            {
+                // Ready set at current time
+                var ready = procs
+                    .Where(p => p.ArrivalTime <= time && remaining[p.ProcessID] > 0)
+                    .OrderBy(p => remaining[p.ProcessID]) // shortest remaining
+                    .ThenBy(p => p.ArrivalTime)           // tie-breaker: earlier arrival
+                    .ToList();
+
+                if (ready.Count == 0)
+                {
+                    // CPU idle; jump to next arrival
+                    var nextArrival = procs.Where(p => remaining[p.ProcessID] > 0).Min(p => p.ArrivalTime);
+                    time = Math.Max(time + 1, nextArrival);
+                    continue;
+                }
+
+                var cur = ready[0];
+                if (firstStart[cur.ProcessID] == -1)
+                    firstStart[cur.ProcessID] = time;
+
+                // Run for 1 time unit (discrete simulation)
+                remaining[cur.ProcessID]--;
+                time++;
+
+                // Completed?
+                if (remaining[cur.ProcessID] == 0)
+                {
+                    finish[cur.ProcessID] = time;
+                    done++;
+                }
+            }
+
+            // Build results (Waiting = TAT - Burst; TAT = Finish - Arrival)
+            var results = procs.Select(p =>
+            {
+                int tat = finish[p.ProcessID] - p.ArrivalTime;
+                int wait = tat - p.BurstTime;
+                return new SchedulingResult
+                {
+                    ProcessID = p.ProcessID,
+                    ArrivalTime = p.ArrivalTime,
+                    BurstTime = p.BurstTime,
+                    StartTime = firstStart[p.ProcessID],
+                    FinishTime = finish[p.ProcessID],
+                    WaitingTime = wait,
+                    TurnaroundTime = tat
+                };
+            })
+            .OrderBy(r => r.StartTime)
+            .ToList();
+
+            return results;
+        }
+        // --- NEW ---
+        private List<SchedulingResult> RunMLFQAlgorithm(List<ProcessData> processes, int q0Quantum = 2, int q1Quantum = 4)
+        {
+            var procs = processes
+                .Select(p => new { p.ProcessID, p.ArrivalTime, p.BurstTime })
+                .OrderBy(p => p.ArrivalTime)
+                .ToList();
+
+            var remaining = procs.ToDictionary(p => p.ProcessID, p => p.BurstTime);
+            var firstStart = procs.ToDictionary(p => p.ProcessID, p => -1);
+            var finish = procs.ToDictionary(p => p.ProcessID, p => 0);
+
+            // Queues
+            var Q0 = new Queue<string>(); // highest, quantum q0Quantum
+            var Q1 = new Queue<string>(); // mid,     quantum q1Quantum
+            var Q2 = new Queue<string>(); // lowest,  FCFS
+
+            int time = procs.Min(p => p.ArrivalTime);
+            int completed = 0;
+
+            // Helper: enqueue any arrivals at 'time' into Q0
+            void EnqueueArrivals(int t)
+            {
+                foreach (var a in procs.Where(p => p.ArrivalTime == t))
+                    Q0.Enqueue(a.ProcessID);
+            }
+
+            // Seed initial arrivals
+            EnqueueArrivals(time);
+
+            // Keep a pointer to future arrivals for quick checks
+            int lastArrival = procs.Max(p => p.ArrivalTime);
+
+            while (completed < procs.Count)
+            {
+                // If all queues are empty, fast-forward to next arrival
+                if (Q0.Count == 0 && Q1.Count == 0 && Q2.Count == 0)
+                {
+                    int next = procs.Where(p => remaining[p.ProcessID] > 0).Min(p => p.ArrivalTime);
+                    time = Math.Max(time, next);
+                    EnqueueArrivals(time);
+                }
+
+                string pickID = null;
+                int quantum = 1; // we run in 1-unit slices but count against queue quantum
+
+                int queueLevel = 2; // 0 for Q0, 1 for Q1, 2 for Q2
+                if (Q0.Count > 0) { pickID = Q0.Dequeue(); quantum = q0Quantum; queueLevel = 0; }
+                else if (Q1.Count > 0) { pickID = Q1.Dequeue(); quantum = q1Quantum; queueLevel = 1; }
+                else if (Q2.Count > 0) { pickID = Q2.Dequeue(); quantum = int.MaxValue; queueLevel = 2; } // FCFS
+
+                if (pickID == null) continue;
+
+                if (firstStart[pickID] == -1) firstStart[pickID] = time;
+
+                int sliceUsed = 0;
+
+                // Run up to quantum or completion; step in 1-unit ticks to catch arrivals/preemption
+                while (sliceUsed < quantum && remaining[pickID] > 0)
+                {
+                    // Execute 1 time unit
+                    remaining[pickID]--;
+                    time++;
+                    sliceUsed++;
+
+                    // Enqueue any arrivals that came exactly at this new time
+                    if (time <= lastArrival) EnqueueArrivals(time);
+
+                    // If a higher queue has work now, we respect that on the next dispatch (end of this 1-unit step)
+                    if (queueLevel > 0 && Q0.Count > 0) break; // preempt lower if Q0 got arrivals
+                    if (queueLevel > 1 && (Q0.Count > 0 || Q1.Count > 0)) break; // preempt Q2 if higher has arrivals
+                }
+
+                // Finished?
+                if (remaining[pickID] == 0)
+                {
+                    finish[pickID] = time;
+                    completed++;
+                    continue;
+                }
+
+                // Not finished — demote (if Q2, stays in Q2) or requeue at same level if preempted early by higher level
+                if (queueLevel == 0)
+                {
+                    if (sliceUsed >= q0Quantum) Q1.Enqueue(pickID); else Q0.Enqueue(pickID);
+                }
+                else if (queueLevel == 1)
+                {
+                    if (sliceUsed >= q1Quantum) Q2.Enqueue(pickID); else Q1.Enqueue(pickID);
+                }
+                else // Q2 (FCFS)
+                {
+                    Q2.Enqueue(pickID);
+                }
+            }
+
+            var results = procs.Select(p =>
+            {
+                int tat = finish[p.ProcessID] - p.ArrivalTime;
+                int wait = tat - p.BurstTime;
+                return new SchedulingResult
+                {
+                    ProcessID = p.ProcessID,
+                    ArrivalTime = p.ArrivalTime,
+                    BurstTime = p.BurstTime,
+                    StartTime = firstStart[p.ProcessID],
+                    FinishTime = finish[p.ProcessID],
+                    WaitingTime = wait,
+                    TurnaroundTime = tat
+                };
+            })
+            .OrderBy(r => r.StartTime)
+            .ToList();
+
+            return results;
+        }
+        // --- NEW ---
+        private void SRTFButton_Click(object sender, EventArgs e)
+        {
+            var processData = GetProcessDataFromGrid();
+            if (processData.Count == 0)
+            {
+                MessageBox.Show("Please set process count and ensure the data grid has process data.",
+                    "No Process Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtProcess.Focus();
+                return;
+            }
+
+            var results = RunSRTFAlgorithm(processData);
+            DisplaySchedulingResults(results, "SRTF - Shortest Remaining Time First");
+            DisplayMetrics(results);
+
+            ShowPanel(resultsPanel);
+            sidePanel.Height = btnDashBoard.Height;
+            sidePanel.Top = btnDashBoard.Top;
+        }
+
+        // --- NEW ---
+        private void MLFQButton_Click(object sender, EventArgs e)
+        {
+            var processData = GetProcessDataFromGrid();
+            if (processData.Count == 0)
+            {
+                MessageBox.Show("Please set process count and ensure the data grid has process data.",
+                    "No Process Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtProcess.Focus();
+                return;
+            }
+
+            // Defaults Q0=2, Q1=4 (Q2=FCFS). Change here if you want a different policy.
+            var results = RunMLFQAlgorithm(processData, q0Quantum: 2, q1Quantum: 4);
+            DisplaySchedulingResults(results, "MLFQ (Q0=2, Q1=4, Q2=FCFS)");
+            DisplayMetrics(results);
+
+            ShowPanel(resultsPanel);
+            sidePanel.Height = btnDashBoard.Height;
+            sidePanel.Top = btnDashBoard.Top;
+        }
 
     }
 
